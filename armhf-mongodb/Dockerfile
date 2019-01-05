@@ -1,4 +1,4 @@
-FROM arm32v7/debian:stretch-slim
+FROM andrewharle/armhf-debian-qemu
 
 RUN [ "cross-build-start" ]
 

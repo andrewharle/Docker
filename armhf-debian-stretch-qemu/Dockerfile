@@ -1,4 +1,4 @@
-FROM resin/armv7hf-debian:stretch
+FROM arm32v7/debian:stretch-slim
 
 ENV QEMU_EXECVE 1
 
