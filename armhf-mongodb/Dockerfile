@@ -1,6 +1,4 @@
-FROM andrewharle/armhf-debian-qemu
-
-RUN [ "cross-build-start" ]
+FROM resin/armv7hf-debian:stretch
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mongodb && useradd -r -g mongodb mongodb
@@ -96,5 +94,3 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 27017
 CMD ["mongod"]
-
-RUN [ "cross-build-end" ]
