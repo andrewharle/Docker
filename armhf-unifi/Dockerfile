@@ -23,7 +23,7 @@ ENV BASEDIR=/usr/lib/unifi \
     UNIFI_UID=999
 
 RUN set -eux; \
-	apt-get update; \
+	apt-get update && apt-get upgrade -y; \
 	apt-get install -y --no-install-recommends \
 		apt-transport-https \
 		ca-certificates \
@@ -38,7 +38,6 @@ RUN set -eux; \
 ENV GOSU_VERSION 1.11
 
 RUN set -ex; \
-	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
         wget \
