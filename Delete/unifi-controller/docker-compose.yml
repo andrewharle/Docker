@@ -1,0 +1,61 @@
+version: "3.4"
+services:
+  unifi-controller:
+    platform: linux/arm/v7
+    image: unifi_temp
+    restart: unless-stopped
+    depends_on:
+      - mongodb-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    ports:
+      - 8443:8443
+      - 3478:3478/udp
+      - 10001:10001/udp
+      - 8080:8080
+      - 1900:1900/udp #optional
+      - 8843:8843 #optional
+      - 8880:8880 #optional
+      - 6789:6789 #optional
+      - 5514:5514/udp #optional
+    healthcheck:
+      test: ["CMD", "curl", "-kILsf", "unifi-controller:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  #https://github.com/docker-library/healthcheck/blob/master/mongo/docker-healthcheck
+  mongodb-server:
+    platform: linux/arm/v7
+    image: mongodb_armhf
+    restart: unless-stopped
+    #expose - Available only to other containers within this compose
+    expose:
+      - 27017
+    command:
+      - "--storageEngine=mmapv1"
+    # From: https://github.com/docker-library/healthcheck/blob/master/mongo/docker-healthcheck
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "mongodb-server/test", "--eval", 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - type: volume
+        source: compose-root/config/data/system.properties
+        target: /config/data/system.properties
+        read_only: true
+
+    #volumes:
+    #  - 'mongodb_data:/bitnami/mongodb'
+    #environment:
+    #  - MONGO_INITDB_ROOT_USERNAME=admin
+    #  - MONGO_INITDB_ROOT_PASSWORD=password
+    
+#volumes:
+#  mongodb_data:
+#    driver: local

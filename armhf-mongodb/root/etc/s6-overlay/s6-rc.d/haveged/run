@@ -1,0 +1,5 @@
+#!/command/execlineb -P
+
+fdmove -c 2 1
+pipeline { haveged -F -v1 }
+mawk -Winteractive "\{print \"[haveged] \" $0\}"

@@ -1,0 +1,8 @@
+#!/command/execlineb -P
+
+with-contenv
+importas -ui PWD PWD
+cd $PWD
+fdmove -c 2 1
+s6-setuidgid unifi
+java -Dlog4j2.formatMsgNoLookups=true -XX:+ExitOnOutOfMemoryError -XX:+CrashOnOutOfMemoryError -jar /usr/lib/unifi/lib/ace.jar start

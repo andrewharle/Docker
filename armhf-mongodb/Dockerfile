@@ -1,15 +1,24 @@
-FROM andrewharle/armhf-debian-qemu:buster
+# Mongodb for armhf works only with buster
+# Example build command= docker build -t mongodb_armhf . --progress=plain --add-host=aptcacher.internal:172.24.59.173 | tee build.log
+FROM --platform=linux/arm/v7 baseimage_temp_buster
 
-RUN [ "cross-build-start" ]
+#https://specs.opencontainers.org/image-spec/annotations/
+LABEL org.opencontainers.image.authors="Andrew Harle <46223597+andrewharle@users.noreply.github.com>"
+LABEL org.opencontainers.image.title="Mongodb for armhf"
+LABEL org.opencontainers.image.source=https://github.com/andrewharle/Docker
+
+ENV UNAME mongodb
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r mongodb && useradd -r -g mongodb mongodb
+RUN set -eux; \
+	groupadd --gid 999 --system $UNAME; \
+	useradd --uid 999 --system --gid $UNAME --home-dir /data/db $UNAME; \
+	mkdir -p /data/db /data/configdb; \
+	chown -R $UNAME:$UNAME /data/db /data/configdb
 
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
-		apt-transport-https \
-		ca-certificates \
 		jq \
 		numactl \
 	; \
@@ -18,73 +27,61 @@ RUN set -eux; \
 	fi; \
 	rm -rf /var/lib/apt/lists/*
 
-# grab gosu for easy step-down from root (https://github.com/tianon/gosu/releases)
-ENV GOSU_VERSION 1.11
 # grab "js-yaml" for parsing mongod's YAML config files (https://github.com/nodeca/js-yaml/releases)
 ENV JSYAML_VERSION 3.13.1
+ENV JSYAML_SHA256 01680f005cd0b602240745d28b8bd439bc41001875f92413252ec0e50983e921
 
 RUN set -ex; \
-	\
 	apt-get update; \
-	apt-get install -y --no-install-recommends \
-		wget \
-	; \
 	if ! command -v gpg > /dev/null; then \
 		apt-get install -y --no-install-recommends gnupg dirmngr; \
 	fi; \
 	rm -rf /var/lib/apt/lists/*; \
-	\
-	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
-	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
-	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
-	export GNUPGHOME="$(mktemp -d)"; \
-	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
-	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
-	command -v gpgconf && gpgconf --kill all || :; \
-	rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc; \
-	chmod +x /usr/local/bin/gosu; \
-	gosu nobody true; \
-	\
 	wget -O /js-yaml.js "https://github.com/nodeca/js-yaml/raw/${JSYAML_VERSION}/dist/js-yaml.js"; \
-# TODO some sort of download verification here
-	\
-	apt-get purge -y --auto-remove wget
+    echo "$JSYAML_SHA256 js-yaml.js" | sha256sum --check; \
+	#Smoke test
+	gosu nobody true
 
 RUN mkdir /docker-entrypoint-initdb.d
-
-#Install dummy mongodb package
-ENV GPG_KEY B6D32792566F0D55059947A90CDEA3BBE213DA29
+    
 RUN set -ex; \
-    \
-    apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv $GPG_KEY \
-    ; \
-    echo "deb https://andrewharle.github.io/REPO/debian buster experimental" | tee -a /etc/apt/sources.list \
-    ; \
-    apt-key list
+    mkdir -p /etc/apt/keyrings && \
+    gpg --no-default-keyring --keyring /etc/apt/keyrings/andrewharle_repo.gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys $ANDREWHARLE_GITHUB_KEY && \
+    echo "deb [arch=armhf signed-by=/etc/apt/keyrings/andrewharle_repo.gpg] https://andrewharle.github.io/REPO/debian buster experimental" | tee /etc/apt/sources.list.d/100-andrewharle_repo.list
 
-# Allow build-time overrides (eg. to build image with MongoDB Enterprise version)
-# Options for MONGO_PACKAGE: mongodb-org OR mongodb-enterprise
-# Options for MONGO_REPO: repo.mongodb.org OR repo.mongodb.com
-# Example: docker build --build-arg MONGO_PACKAGE=mongodb-enterprise --build-arg MONGO_REPO=repo.mongodb.com .
-
+    # Allow build-time overrides (eg. to build image with MongoDB Enterprise version)
+    # Options for MONGO_PACKAGE: mongodb-org OR mongodb-enterprise
+    # Options for MONGO_REPO: repo.mongodb.org OR repo.mongodb.com
+    # Example: docker build --build-arg MONGO_PACKAGE=mongodb-enterprise --build-arg MONGO_REPO=repo.mongodb.com .
+    
 ENV MONGO_PACKAGE=mongodb
 ENV MONGO_VERSION 1:4.0.*
 
 RUN set -x \
-	&& apt-get update \
-	&& apt-get install -y ${MONGO_PACKAGE}=$MONGO_VERSION \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& rm -rf /var/lib/mongodb
+    && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get update \
+    && apt-get install -y ${MONGO_PACKAGE}=$MONGO_VERSION \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/mongodb \
+    && mv /etc/mongodb.conf /etc/mongodb.conf.orig
 
-RUN mkdir -p /data/db /data/configdb \
-	&& chown -R mongodb:mongodb /data/db /data/configdb
+# add local files
+RUN set -ex; \
+    echo "**** Copying Local Files****"
+COPY root/ /
+RUN chmod +x /sbin/mongo_init/*.sh
+
 VOLUME /data/db /data/configdb
 
+# ensure that if running as custom user that "mongosh" has a valid "HOME"
+# https://github.com/docker-library/mongo/issues/524
+ENV HOME /data/db
+
+RUN set -ex; \
+    echo "C"
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat (3.4)
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENV S6_CMD_ARG0 "docker-entrypoint.sh"
 
 EXPOSE 27017
 CMD ["mongod"]
-
-RUN [ "cross-build-end" ]
+ENTRYPOINT ["/init"]

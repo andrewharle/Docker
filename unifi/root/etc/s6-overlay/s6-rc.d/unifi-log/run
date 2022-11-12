@@ -1,0 +1,22 @@
+#!/command/execlineb -P
+# Log as nobody
+s6-envuidgid -D 65534:65534 nobody
+s6-applyuidgid -U
+
+# Clear environment
+exec -c
+
+define service_name unifi
+define alert_expr .*[cC][rR][iI][tT][iI][cC][aA][lL].*|.*[eE][rR][rR][oO][rR].*
+
+#Redirect stdout to stderr
+fdmove -c 1 2
+# 1. All logs are output to file
+#   prepend with ISO8601; rotation@ 1mb; max archive qty=20 in set; gz compression enabled
+# 2. Logs containing the alert_expr are output to std_err, with the service name prepended.
+pipeline { s6-log -b -- n20 s1000000 T !"gzip -nq9" /var/log/${service_name} E500 - +${alert_expr} 1 }
+# The default Debian awk utilises an annoying buffer, disable this for streaming logs.
+mawk -Winteractive "\{print \"[${service_name}] \" $0\}"
+
+#exec -c
+#exec logutil-service /var/log/unifi
