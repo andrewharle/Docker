@@ -1,0 +1,47 @@
+DB Auth isn't use in this config, but if it was....
+
+db.createUser(
+{
+	user: "ubnt",
+
+	pwd: "password",
+
+	roles:[{role: "dbOwner" , db:"unifi-test"}]})
+
+
+use unifi-test
+db.grantRolesToUser(
+  "ubnt",
+   [
+     	{ role: "clusterMonitor", db:"admin"},
+	{ role: "dbOwner", db:"unifi-test_stat"},
+   ]
+)
+
+This gist might help for initalisation in future
+
+https://gist.github.com/gbzarelli/c15b607d62fc98ae436564bf8129ea8e
+
+```mongo-init.js (lives in the /docker-entrypoint-initdb.d)
+db = db.getSiblingDB('sample_db');
+
+db.createCollection('sample_collection');
+
+db.sample_collection.insertMany([
+ {
+    org: 'helpdev',
+    filter: 'EVENT_A',
+    addrs: 'http://rest_client_1:8080/wh'
+  },
+  {
+    org: 'helpdev',
+    filter: 'EVENT_B',
+    addrs: 'http://rest_client_2:8081/wh'
+  },
+  {
+    org: 'github',
+    filter: 'EVENT_C',
+    addrs: 'http://rest_client_3:8082/wh'
+  }  
+]);
+```

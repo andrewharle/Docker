@@ -1,0 +1,6 @@
+#!/command/execlineb -P
+
+with-contenv
+fdmove -c 2 1
+pipeline { /sbin/unifi_init/30-keygen.sh }
+mawk -Winteractive "\{print \"[init-30-keygen] \" $0\}"
