@@ -47,10 +47,11 @@ jobs:
       - name: Build the Docker image
         run: |
           cd ${{ github.event.inputs.image_select }} && \
-          docker build -t ${{ github.event.inputs.image_select }} . \
+          DOCKER_BUILDKIT=1 docker build -t ${{ github.event.inputs.image_select }} . \
           --build-arg CACHE_DATE:$(date +%Y-%m-%d) \
           --add-host=aptcacher.internal:host-gateway \
-          --platform=linux/arm/v7
+          --platform=linux/arm/v7 \
+          --progress=plain
 
       - name: Tag Docker image
         run: |
