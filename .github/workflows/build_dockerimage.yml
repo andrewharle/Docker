@@ -10,6 +10,7 @@ on:
           type: choice
           options:
           - master
+          
         image_select:
           description: 'Docker image to build'
           required: true
@@ -17,8 +18,11 @@ on:
           type: choice
           options:
           - base
+          
 jobs:
+
   build:
+  
     runs-on: ubuntu-latest
     permissions:
       contents: read
