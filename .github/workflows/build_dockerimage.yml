@@ -14,10 +14,10 @@ on:
         image_select:
           description: 'Docker image to build'
           required: true
-          default: 'base' 
+          default: 'debian-base' 
           type: choice
           options:
-          - base
+          - debian-base
           
 jobs:
 
