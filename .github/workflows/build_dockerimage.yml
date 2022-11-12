@@ -10,6 +10,7 @@ on:
           type: choice
           options:
           - master
+          - MultiArch
           
         image_select:
           description: 'Docker image to build'
@@ -49,11 +50,15 @@ jobs:
     
       - name: Build the Docker image
         run: |
+          echo $(hostname -I)
           cd ${{ github.event.inputs.image_select }} && \
-          docker build -t ${{ github.event.inputs.image_select }} . \
+          docker buildx create --name mybuilder --use && \
+          docker buildx build -t ${{ github.event.inputs.image_select }} . \
           --build-arg CACHE_DATE:$(date +%Y-%m-%d) \
-          --add-host=aptcacher.internal:host-gateway \
-          --progress=plain
+          --progress=plain \
+          --add-host=aptcacher.internal:$(hostname -I | cut -d' ' -f1) \
+          --platform linux/amd64,linux/arm64,linux/arm/v7
+          
 
       - name: Tag Docker image
         run: |

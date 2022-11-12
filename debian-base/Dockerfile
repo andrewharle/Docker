@@ -4,7 +4,7 @@
 # On linux e.g. docker build -t debian_buildenv . --add-host=aptcacher.internal:host-gateway
 # On WSL e.g. docker build -t debian_buildenv . --add-host=aptcacher.internal:host.docker.internal (or whichever host for the aptcache)
 
-FROM arm32v7/debian:bullseye-slim
+FROM --platform=$TARGETPLATFORM debian:bullseye-slim
 
 #https://specs.opencontainers.org/image-spec/annotations/
 LABEL org.opencontainers.image.authors="Andrew Harle <46223597+andrewharle@users.noreply.github.com>"
