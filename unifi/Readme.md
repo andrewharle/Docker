@@ -3,7 +3,6 @@
 This is a modified version of the image provided by [linuxserver/unifi-controller](https://github.com/linuxserver/docker-unifi-controller). In particular:
 
  * MongoDB is not bundled, instead an external container is used in the docker-compose file;
- * temurin-8 is used instead of OpenJDK8;
  * s6-overlay v3 is used.
 
 The [Unifi-controller](https://www.ubnt.com/enterprise/#unifi) software is a powerful, enterprise wireless software engine ideal for high-density client deployments requiring low latency and high uptime performance.

@@ -1,30 +1,31 @@
-#TODO: Setup haveged service
-
 #IMPORTANT use "--add-host" directive in linux in combination with an Apt-Cacher NG server.
 # On linux e.g. docker build -t debian_buildenv . --add-host=aptcacher.internal:host-gateway
 # On WSL e.g. docker build -t debian_buildenv . --add-host=aptcacher.internal:host.docker.internal (or whichever host for the aptcache)
-
-FROM --platform=$TARGETPLATFORM debian:bullseye-slim
+ARG RELEASE
+ARG TARGETPLATFORM
+FROM --platform=$TARGETPLATFORM debian:$RELEASE-slim AS main-app
 
 #https://specs.opencontainers.org/image-spec/annotations/
 LABEL org.opencontainers.image.authors="Andrew Harle <46223597+andrewharle@users.noreply.github.com>"
-LABEL org.opencontainers.image.title="Base image andrewharle.github.io"
-LABEL org.opencontainers.image.source=https://github.com/andrewharle/Docker
+LABEL org.opencontainers.image.title="debian bullseye with s6-overlay and supercronic"
+LABEL org.opencontainers.image.source=https://github.com/andrewharle/SISU-INFRASTRUCTURE/
+LABEL org.opencontainers.image.licenses="GPL-3.0-only"
 
 # set environment variables
-ARG DEBIAN_FRONTEND="noninteractive"
 ENV ANDREWHARLE_GITHUB_KEY B6D32792566F0D55059947A90CDEA3BBE213DA29
 
 # make the "en_GB.UTF-8" locale so builds will be utf-8 enabled by default
 RUN set -eux; \
     echo "**** install apt-utils and locales ****" && \
         echo 'Acquire::http { Proxy "http://aptcacher.internal:3142"; };' >> /etc/apt/apt.conf.d/01proxy && \
-        apt-get update && \
-        apt-get upgrade -y && \
-        apt-get install -y \
+        echo "deb http://deb.debian.org/debian/ bullseye-backports main" > /etc/apt/sources.list.d/bullseye-backports.list && \
+        echo "deb http://deb.debian.org/debian/ bullseye contrib" > /etc/apt/sources.list.d/bullseye-contrib.list && \
+        DEBIAN_FRONTEND="noninteractive" apt-get update && \
+        DEBIAN_FRONTEND="noninteractive" apt-get upgrade -y && \
+        DEBIAN_FRONTEND="noninteractive" apt-get install -y \
         apt-utils && \
     echo "**** install packages ****" && \
-        apt-get install -y \
+        DEBIAN_FRONTEND="noninteractive" apt-get install -y \
         curl \
         wget \
         patch \
@@ -32,9 +33,14 @@ RUN set -eux; \
         haveged \
         ca-certificates \
         apt-transport-https \
+        apt-utils \
         xz-utils \
         gpg \
-        gosu && \
+        gosu \
+        file \
+        lnav \
+        rsync \
+        && \
     echo "**** generate locale ****" && \
         if [ -f /etc/dpkg/dpkg.cfg.d/docker ]; then \
         # if this file exists, we're likely in "debian:xxx-slim", and locales are thus being excluded so we need to remove that exclusion (since we need locales)
@@ -84,6 +90,6 @@ RUN set -eux; \
     wget -q -i /tmp/supercronic.releases.dl -P /tmp/supercronic/; \
     cd /tmp/supercronic && gpg --verify *.asc && sha256sum -c --ignore-missing *.sha256sum; \
     mkdir -p /opt/supercronic/bin/ && cp "supercronic-linux-"$(cat /opt/architecture-supercronic-cpu) /opt/supercronic/bin/supercronic; \
+    chmod +x /opt/supercronic/bin/supercronic; \
     cd / && rm -rf /tmp/*;
-
     

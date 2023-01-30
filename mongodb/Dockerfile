@@ -1,10 +1,11 @@
 # Mongodb for armhf works only with buster
 # Example build command= docker build -t mongodb_armhf . --progress=plain --add-host=aptcacher.internal:172.24.59.173 | tee build.log
-FROM --platform=linux/arm/v7 baseimage_temp_buster
+ARG TARGETPLATFORM
+FROM --platform=$TARGETPLATFORM localhost/baseimage-buster
 
 #https://specs.opencontainers.org/image-spec/annotations/
 LABEL org.opencontainers.image.authors="Andrew Harle <46223597+andrewharle@users.noreply.github.com>"
-LABEL org.opencontainers.image.title="Mongodb for armhf"
+LABEL org.opencontainers.image.title="Mongodb 4.0 Docker Image"
 LABEL org.opencontainers.image.source=https://github.com/andrewharle/Docker
 
 ENV UNAME mongodb
@@ -43,16 +44,14 @@ RUN set -ex; \
 	gosu nobody true
 
 RUN mkdir /docker-entrypoint-initdb.d
-    
+
+ENV TARGETPLATFORM=$TARGETPLATFORM
 RUN set -ex; \
+	echo "$TARGETPLATFORM"; \
+	host_arch=$(arch | sed "/x86_64/c amd64" | sed "/i*86/c 386" | sed "s/armv7l/armhf/" | sed "/aarch64/c arm64") && \
     mkdir -p /etc/apt/keyrings && \
     gpg --no-default-keyring --keyring /etc/apt/keyrings/andrewharle_repo.gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys $ANDREWHARLE_GITHUB_KEY && \
-    echo "deb [arch=armhf signed-by=/etc/apt/keyrings/andrewharle_repo.gpg] https://andrewharle.github.io/REPO/debian buster experimental" | tee /etc/apt/sources.list.d/100-andrewharle_repo.list
-
-    # Allow build-time overrides (eg. to build image with MongoDB Enterprise version)
-    # Options for MONGO_PACKAGE: mongodb-org OR mongodb-enterprise
-    # Options for MONGO_REPO: repo.mongodb.org OR repo.mongodb.com
-    # Example: docker build --build-arg MONGO_PACKAGE=mongodb-enterprise --build-arg MONGO_REPO=repo.mongodb.com .
+    echo "deb [arch=$host_arch signed-by=/etc/apt/keyrings/andrewharle_repo.gpg] https://andrewharle.github.io/REPO/debian buster experimental" | tee /etc/apt/sources.list.d/100-andrewharle_repo.list
     
 ENV MONGO_PACKAGE=mongodb
 ENV MONGO_VERSION 1:4.0.*
